@@ -29,9 +29,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/toolbar"
-        android:text="abc-123-7yf"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
+        android:text="abc-123-7yf"
         android:textColor="@color/black"
         android:textSize="18sp" />
     <!-- TODO: update this button as per your convenience-->

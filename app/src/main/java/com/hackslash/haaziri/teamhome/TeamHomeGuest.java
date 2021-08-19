@@ -1,11 +1,5 @@
 package com.hackslash.haaziri.teamhome;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -15,15 +9,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.media.Image;
 import android.os.Bundle;
-import android.text.InputFilter;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -31,10 +28,12 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.ValueEventListener;
 import com.hackslash.haaziri.R;
 import com.hackslash.haaziri.activitydialog.ActivityDialog;
 import com.hackslash.haaziri.firebase.FirebaseVars;
+import com.hackslash.haaziri.models.Session;
 import com.hackslash.haaziri.models.SessionAttendee;
 import com.hackslash.haaziri.models.Team;
 import com.hackslash.haaziri.models.UserProfile;
@@ -52,14 +51,17 @@ public class TeamHomeGuest extends AppCompatActivity {
 
     private Button giveHaaziriBtn;
     private String teamCode = "";
+    private String sessionId = "";
     private ActivityDialog dialog;
     private Context mContext = this;
     private String currentSessionId = "";
     private Team currentTeam;
     private ArrayList<String> nearbyDevices;
+    private ArrayList<Session> recentSessionId;
     private BluetoothAdapter adapter;
     private boolean found = false;
     private UserProfile currentUserProfile;
+    private Session recentSessions;
     private FirebaseUser currentUser;
     private TextView teamNameTv;
     private TextView teamCodeTv;
@@ -141,6 +143,35 @@ public class TeamHomeGuest extends AppCompatActivity {
         });
     }
 
+    private void fetchRecentSessions() {
+        dialog.setTitle("Fetching team details");
+        dialog.setMessage("Please wait while we fetch the team details");
+        dialog.showDialog();
+        DatabaseReference mRootRef = FirebaseVars.mRootRef;
+        mRootRef.child("/users/" + sessionId + "/");
+        mRootRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                dialog.hideDialog();
+                int allSessions = (int) snapshot.getChildrenCount();
+                if (snapshot.child("/users/" + sessionId + "/").exists()){
+                    for (DataSnapshot postSnapshot: snapshot.getChildren()) {
+                        recentSessions = postSnapshot.getValue(Session.class);
+                        recentSessionId.add(recentSessions);
+                    }
+                    new RecentSessionsAdapter(recentSessionId ,TeamHomeGuest.this);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                dialog.hideDialog();
+                MotionToastUtitls.showErrorToast(mContext, "Error", "Some error occurred in fetching current session details");
+                Log.d(TAG, "onCancelled: " + error.getDetails());
+            }
+        });
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -185,6 +216,7 @@ public class TeamHomeGuest extends AppCompatActivity {
     private void initVars() {
         Intent intent = getIntent();
         teamCode = intent.getStringExtra(Constants.TEAM_CODE_KEY);
+        sessionId = intent.getStringExtra(Constants.SESSION_CODE_KEY);
         giveHaaziriBtn = findViewById(R.id.giveHaaziriBtn);
         dialog = new ActivityDialog(mContext);
         dialog.setCancelable(false);
